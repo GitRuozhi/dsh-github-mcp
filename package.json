@@ -26,8 +26,7 @@
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",
-    "LICENSE",
-    "test/validate.mjs"
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
