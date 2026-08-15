@@ -54,6 +54,34 @@ DSH's built-in `dsh-mcp-client` bridges MCP **tools** only (not `resources`/`pro
 
 Search/issue/PR/repo/commit MCP tools that return text are unaffected.
 
+## Minimal presets
+
+This bundle registers its tools **globally** (at the profile layer), so **every** agent preset inherits `mcp__github__*` and `github_file_read` — including the `minimal` and `mini-win` presets. If you want a minimal preset to stay minimal, mask the GitHub tools by dropping a tiny local plugin next to that preset's `agent.cordis.yml`:
+
+```js
+// restrict-github.js
+const name = 'restrict-github';
+const inject = ['tools'];
+
+function apply(ctx) {
+  const deny = ctx.tools
+    .schemas()
+    .map((schema) => schema.name)
+    .filter((n) => n.startsWith('mcp__github__') || n === 'github_file_read');
+  if (deny.length > 0) ctx.tools.restrict({ deny });
+}
+
+export { apply, inject, name };
+```
+
+```yaml
+# in that preset's agent.cordis.yml
+- id: restrict-github
+  name: ./restrict-github.js
+```
+
+Restart `dsh`. That preset keeps its own tools but no longer inherits the GitHub ones.
+
 ## Verify
 
 ```powershell
