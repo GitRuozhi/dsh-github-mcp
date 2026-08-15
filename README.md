@@ -82,6 +82,8 @@ export { apply, inject, name };
 
 Restart `dsh`. That preset keeps its own tools but no longer inherits the GitHub ones.
 
+> **Shipped presets can't be overridden this way.** This method works for presets *you* author. DSH's built-in `minimal` preset ships with the harness and **shadows any same-named user preset** (shipped roots win duplicate ids), so you cannot mask it by adding a `minimal` directory under `.agent-presets`. To mask a shipped preset, copy it to your own preset first (as `mini-win` is a Windows copy of `minimal`), then add `restrict-github.js` to the copy. Editing the shipped file directly works until the harness cache refreshes, then is lost — not recommended.
+
 ## Verify
 
 ```powershell
