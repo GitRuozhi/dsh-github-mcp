@@ -2,7 +2,7 @@
 
 [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) bundle that bridges the **official** [GitHub MCP server](https://github.com/github/github-mcp-server) (`github/github-mcp-server`) into DSH as native tools, using DSH's built-in `@deepseek-ai/dsh-mcp-client`.
 
-After install, the model sees the `mcp__github__*` tool family — e.g. `mcp__github__get_me`, `mcp__github__search_repositories`, `mcp__github__search_code`, `mcp__github__create_issue`, `mcp__github__create_pull_request`, `mcp__github__get_file_contents`, `mcp__github__create_repository`, and more (the official server currently exposes ~44 tools).
+After install, the model sees the `mcp__github__*` tool family — e.g. `mcp__github__get_me`, `mcp__github__search_repositories`, `mcp__github__search_code`, `mcp__github__create_issue`, `mcp__github__create_pull_request`, `mcp__github__create_repository`, and more (the official server currently exposes ~44 tools) — **plus** a `github_file_read` tool that returns decoded file/directory contents (see below).
 
 ## Install
 
@@ -41,9 +41,18 @@ config:
   url: http://localhost:8085/mcp
 ```
 
-## Known limitation
+## Reading file contents (`github_file_read`)
 
-DSH's `dsh-mcp-client` bridges MCP **tools** only (not `resources`/`prompts`). GitHub's `get_file_contents` returns file bodies as an MCP *resource*, so the raw body is dropped on the bridge — the tool still fetches the file (SHA/size), but the text isn't passed back to the model. Search/issue/PR/repo tools that return text work normally.
+DSH's built-in `dsh-mcp-client` bridges MCP **tools** only (not `resources`/`prompts`). GitHub's `get_file_contents` returns file bodies as an MCP *resource*, which the bridge drops — so `mcp__github__get_file_contents` can fetch a file (SHA/size) but cannot return its text.
+
+`github_file_read` fills that gap by calling the GitHub contents REST API directly and returning decoded UTF-8 text:
+
+- `owner` / `repo` / `path` — the file to read, or a directory to list.
+- `ref` — optional branch / tag / commit SHA.
+- Files ≤ 1 MB are decoded inline; larger files return a clear message (use the raw endpoint or clone the repo).
+- Works for public and private repos; private repos need a `GITHUB_TOKEN` with `repo` scope.
+
+Search/issue/PR/repo/commit MCP tools that return text are unaffected.
 
 ## Verify
 

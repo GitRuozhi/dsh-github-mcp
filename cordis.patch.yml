@@ -1,13 +1,17 @@
-# cordis.patch.yml — GitHub official MCP server bridge (DSH profile bundle patch)
+# cordis.patch.yml — GitHub official MCP server bridge + REST file reader.
 #
 # Installed via:  dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
-# Bridges the official github/github-mcp-server into DSH native tools via
-# @deepseek-ai/dsh-mcp-client, exposing the mcp__github__* tool family.
 #
-# Remote mode (recommended, zero local deps): GitHub's hosted endpoint
-# https://api.githubcopilot.com/mcp/. Authentication is a bearer token read
-# from process.env.GITHUB_TOKEN (OAuth token or fine-grained PAT) — put it in
-# $DSH_HOME/.env and restart dsh. See README.md for the local Docker mode.
+# Two plugin rows:
+#   1. mcp-github       — bridges the official github/github-mcp-server (remote
+#                         mode, api.githubcopilot.com/mcp/) into mcp__github__*
+#                         native tools via @deepseek-ai/dsh-mcp-client.
+#   2. github-file-read — registers github_file_read, a REST-backed file/dir
+#                         reader returning decoded text. It exists because
+#                         dsh-mcp-client discards MCP resource content, so
+#                         get_file_contents can't return file bodies.
+#
+# Both read GITHUB_TOKEN from process.env (materialized from $DSH_HOME/.env).
 
 - insert:
     - id: mcp-github
@@ -20,3 +24,7 @@
           Authorization: !!js '`Bearer ${process.env.GITHUB_TOKEN}`'
         toolCallTimeoutMs: 60000
         failOnStartupError: false
+
+    - id: github-file-read
+      name: dsh-github-mcp
+      config: {}
