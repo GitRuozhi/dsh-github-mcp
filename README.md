@@ -13,7 +13,7 @@ dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
 Then set a GitHub token and restart `dsh web`:
 
 ```powershell
-# put the token in DSH's user env layer (materialized into process.env at boot)
+# $DSH_HOME defaults to ~/.dsh — write the token to its .env (materialized into process.env at boot)
 Set-Content -Path "$env:USERPROFILE\.dsh\.env" -Value "GITHUB_TOKEN=$(gh auth token)"
 # restart dsh web
 ```
