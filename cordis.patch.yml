@@ -1,0 +1,22 @@
+# cordis.patch.yml — GitHub official MCP server bridge (DSH profile bundle patch)
+#
+# Installed via:  dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
+# Bridges the official github/github-mcp-server into DSH native tools via
+# @deepseek-ai/dsh-mcp-client, exposing the mcp__github__* tool family.
+#
+# Remote mode (recommended, zero local deps): GitHub's hosted endpoint
+# https://api.githubcopilot.com/mcp/. Authentication is a bearer token read
+# from process.env.GITHUB_TOKEN (OAuth token or fine-grained PAT) — put it in
+# $DSH_HOME/.env and restart dsh. See README.md for the local Docker mode.
+
+- insert:
+    - id: mcp-github
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: github
+        transport: streamable-http
+        url: https://api.githubcopilot.com/mcp/
+        headers:
+          Authorization: !!js '`Bearer ${process.env.GITHUB_TOKEN}`'
+        toolCallTimeoutMs: 60000
+        failOnStartupError: false

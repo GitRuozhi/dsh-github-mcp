@@ -1,0 +1,31 @@
+{
+  "name": "dsh-github-mcp",
+  "description": "GitHub official MCP server bridge for DeepSeek Harness: registers mcp__github__* native tools via @deepseek-ai/dsh-mcp-client (remote mode, api.githubcopilot.com/mcp/).",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GitRuozhi/dsh-github-mcp.git"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "github",
+    "mcp",
+    "github-mcp-server"
+  ],
+  "files": [
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-mcp-client": "^0.1.0-rc.6"
+  }
+}
