@@ -1,8 +1,8 @@
 # dsh-github-mcp
 
-[DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) bundle that bridges the **official** [GitHub MCP server](https://github.com/github/github-mcp-server) (`github/github-mcp-server`) into DSH as native tools, using DSH's built-in `@deepseek-ai/dsh-mcp-client`.
+DSH-GitHub bridge: exposes the official GitHub MCP server as DSH-native tools, and fixes the issue where DSH's bridge discards file content.
 
-After install, the model sees the `mcp__github__*` tool family — e.g. `mcp__github__get_me`, `mcp__github__search_repositories`, `mcp__github__search_code`, `mcp__github__create_issue`, `mcp__github__create_pull_request`, `mcp__github__create_repository`, and more (the official server currently exposes ~44 tools) — **plus** a `github_file_read` tool that returns decoded file/directory contents (see below).
+After install, the agent can reach GitHub and read files directly through the `mcp__github__*` tool family and the `github_file_read` tool — no local Git or `gh` CLI in between.
 
 ## Install
 
@@ -10,53 +10,38 @@ After install, the model sees the `mcp__github__*` tool family — e.g. `mcp__gi
 dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
 ```
 
-Then set a GitHub token and restart `dsh web`:
+Set `GITHUB_TOKEN` and restart `dsh web`. If `gh` is already logged in on this machine, you can just ask DSH to configure it for you.
 
-```powershell
-# $DSH_HOME defaults to ~/.dsh — write the token to its .env (materialized into process.env at boot)
-Set-Content -Path "$env:USERPROFILE\.dsh\.env" -Value "GITHUB_TOKEN=$(gh auth token)"
-# restart dsh web
-```
-
-`GITHUB_TOKEN` is a GitHub OAuth token (`gh auth token`) or a fine-grained personal access token (PAT). DSH materializes `$DSH_HOME/.env` into `process.env` at boot; the bridge reads `process.env.GITHUB_TOKEN`.
-
-## What it is / isn't
+## Features
 
 | | |
 |---|---|
-| ✅ Official server | connects to GitHub's first-party `github-mcp-server` |
-| ✅ Native MCP | speaks MCP (`streamable-http`) directly — not wrapping `gh`, not hand-rolled REST |
-| ✅ Remote mode | GitHub's hosted endpoint `https://api.githubcopilot.com/mcp/` — zero local deps |
-| ❌ No bundled token | you supply `GITHUB_TOKEN` (see above) |
+| ✅ Official | talks to GitHub's official `github-mcp-server` |
+| ✅ Native MCP | speaks MCP directly — no `gh` wrapper, no hand-written REST |
+| ✅ Zero local deps | uses GitHub's hosted endpoint `https://api.githubcopilot.com/mcp/` |
+| ✅ Reads file bodies | `github_file_read` fixes the official bridge's dropped-content problem |
 
-## Remote vs local mode
+## Tools
 
-This bundle ships **remote mode** (recommended). To self-host the official server locally instead, edit `cordis.patch.yml`: point `url` at your own server and drop the `headers`:
+Two tool families are added on install:
 
-```yaml
-# docker run --rm -p 8085:8085 -e GITHUB_PERSONAL_ACCESS_TOKEN=<token> ghcr.io/github/github-mcp-server
-config:
-  serverName: github
-  transport: streamable-http
-  url: http://localhost:8085/mcp
-```
+**`github_file_read`** — read a file's contents (decoded to UTF-8 text) or list a directory; private repos work too (needs `GITHUB_TOKEN`).
 
-## Reading file contents (`github_file_read`)
+**`mcp__github__*` (44 tools from GitHub's official MCP server)**
 
-DSH's built-in `dsh-mcp-client` bridges MCP **tools** only (not `resources`/`prompts`). GitHub's `get_file_contents` returns file bodies as an MCP *resource*, which the bridge drops — so `mcp__github__get_file_contents` can fetch a file (SHA/size) but cannot return its text.
+- **Search**: `search_repositories`, `search_code`, `search_issues`, `search_pull_requests`, `search_commits`, `search_users`
+- **Repos**: `create_repository`, `fork_repository`, `list_repository_collaborators`, `list_branches` / `create_branch`, `list_tags` / `get_tag`, `list_commits` / `get_commit`
+- **Files**: `get_file_contents`, `create_or_update_file`, `delete_file`, `push_files`
+- **Releases**: `list_releases`, `get_latest_release`, `get_release_by_tag`
+- **Issues**: `list_issues`, `issue_read`, `issue_write`, `sub_issue_write`, `add_issue_comment`, `get_label`, `list_issue_types` / `list_issue_fields`, `get_teams` / `get_team_members`
+- **Pull requests**: `list_pull_requests`, `pull_request_read`, `create_pull_request`, `update_pull_request`, `update_pull_request_branch`, `merge_pull_request`, `pull_request_review_write`, `add_comment_to_pending_review`, `add_reply_to_pull_request_comment`, `request_copilot_review`
+- **Other**: `get_me`, `run_secret_scanning`
 
-`github_file_read` fills that gap by calling the GitHub contents REST API directly and returning decoded UTF-8 text:
-
-- `owner` / `repo` / `path` — the file to read, or a directory to list.
-- `ref` — optional branch / tag / commit SHA.
-- Files ≤ 1 MB are decoded inline; larger files return a clear message (use the raw endpoint or clone the repo).
-- Works for public and private repos; private repos need a `GITHUB_TOKEN` with `repo` scope.
-
-Search/issue/PR/repo/commit MCP tools that return text are unaffected.
+> Model-facing names all carry the `mcp__github__` prefix.
 
 ## Minimal presets
 
-This bundle registers its tools **globally** (at the profile layer), so **every** agent preset inherits `mcp__github__*` and `github_file_read` — including the `minimal` and `mini-win` presets. If you want a minimal preset to stay minimal, mask the GitHub tools by dropping a tiny local plugin next to that preset's `agent.cordis.yml`:
+This plugin registers its tools globally, so every preset inherits the GitHub tools — including minimal presets. To opt a preset out, mask them as follows. Note: DSH's built-in `minimal` preset cannot mask global plugins; create your own custom minimal preset instead.
 
 ```js
 // restrict-github.js
@@ -79,19 +64,3 @@ export { apply, inject, name };
 - id: restrict-github
   name: ./restrict-github.js
 ```
-
-Restart `dsh`. That preset keeps its own tools but no longer inherits the GitHub ones.
-
-> **Shipped presets can't be overridden this way.** This method works for presets *you* author. DSH's built-in `minimal` preset ships with the harness and **shadows any same-named user preset** (shipped roots win duplicate ids), so you cannot mask it by adding a `minimal` directory under `.agent-presets`. To mask a shipped preset, copy it to your own preset first (as `mini-win` is a Windows copy of `minimal`), then add `restrict-github.js` to the copy. Editing the shipped file directly works until the harness cache refreshes, then is lost — not recommended.
-
-## Verify
-
-```powershell
-node test/validate.mjs   # validates the bundle patch + mcp-client config schema
-```
-
-New session → ask the model to call `mcp__github__get_me`; your account info means it's connected.
-
-## License
-
-MIT
