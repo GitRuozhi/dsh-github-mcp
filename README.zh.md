@@ -41,7 +41,9 @@ dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
 
 ## 极简预设
 
-这个插件把工具注册在全局，所以所有预设都会继承 GitHub 工具，包括极简预设。如果您希望某个预设不采用此插件，可以使用下面的方法屏蔽。请注意，DSH 原生极简预设 `minimal` 无法屏蔽全局插件，您可以新建一个自定义极简预设来实现屏蔽。
+这个插件把工具注册在全局，所以所有预设都会继承 GitHub 工具，包括极简预设。如果您希望某个预设不采用此插件，可以在每次系统提示组装时把它们过滤掉。请注意，DSH 原生极简预设 `minimal` 无法屏蔽全局插件，您可以新建一个自定义极简预设来实现屏蔽。
+
+> 请在 `system-prompt/assemble` 里过滤，而不要在 `apply` 时对 `ctx.tools.schemas()` 打快照：本插件是异步注册工具的（MCP 发现 + `ctx.effect` 注册），一次性快照在 `apply` 时是空的，屏蔽不会生效。组装时过滤与注册顺序无关——请求发生前已注册的工具都会被过滤掉。
 
 ```js
 // restrict-github.js
@@ -49,11 +51,21 @@ const name = 'restrict-github';
 const inject = ['tools'];
 
 function apply(ctx) {
-  const deny = ctx.tools
-    .schemas()
-    .map((schema) => schema.name)
-    .filter((n) => n.startsWith('mcp__github__') || n === 'github_file_read');
-  if (deny.length > 0) ctx.tools.restrict({ deny });
+  ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+    const assembled = await next();
+    try {
+      const tools = assembled && Array.isArray(assembled.tools) ? assembled.tools : [];
+      const filtered = tools.filter((tool) => {
+        const toolName = tool && typeof tool.name === 'string' ? tool.name : '';
+        return !(toolName.startsWith('mcp__github__') || toolName === 'github_file_read');
+      });
+      if (filtered.length === tools.length) return assembled;
+      return { ...assembled, tools: filtered };
+    } catch (error) {
+      // 过滤器出错绝不能把会话搞崩：保留全部工具。
+      return assembled;
+    }
+  });
 }
 
 export { apply, inject, name };

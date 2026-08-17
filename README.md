@@ -41,7 +41,9 @@ Two tool families are added on install:
 
 ## Minimal presets
 
-This plugin registers its tools globally, so every preset inherits the GitHub tools — including minimal presets. To opt a preset out, mask them as follows. Note: DSH's built-in `minimal` preset cannot mask global plugins; create your own custom minimal preset instead.
+This plugin registers its tools globally, so every preset inherits the GitHub tools — including minimal presets. To opt a preset out, filter them from each system-prompt assembly. Note: DSH's built-in `minimal` preset cannot mask global plugins; create your own custom minimal preset instead.
+
+> Filter at `system-prompt/assemble` rather than snapshotting `ctx.tools.schemas()` at `apply` time: the plugin registers its tools asynchronously (MCP discovery plus a `ctx.effect` registration), so a one-time snapshot is empty at apply time and no restriction gets installed. Assembly-time filtering is registration-time independent — whatever registered before the request is filtered out.
 
 ```js
 // restrict-github.js
@@ -49,11 +51,21 @@ const name = 'restrict-github';
 const inject = ['tools'];
 
 function apply(ctx) {
-  const deny = ctx.tools
-    .schemas()
-    .map((schema) => schema.name)
-    .filter((n) => n.startsWith('mcp__github__') || n === 'github_file_read');
-  if (deny.length > 0) ctx.tools.restrict({ deny });
+  ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+    const assembled = await next();
+    try {
+      const tools = assembled && Array.isArray(assembled.tools) ? assembled.tools : [];
+      const filtered = tools.filter((tool) => {
+        const toolName = tool && typeof tool.name === 'string' ? tool.name : '';
+        return !(toolName.startsWith('mcp__github__') || toolName === 'github_file_read');
+      });
+      if (filtered.length === tools.length) return assembled;
+      return { ...assembled, tools: filtered };
+    } catch (error) {
+      // A filter bug must never brick a session: keep every tool.
+      return assembled;
+    }
+  });
 }
 
 export { apply, inject, name };
