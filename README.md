@@ -21,6 +21,15 @@ Set `GITHUB_TOKEN` and restart `dsh web`. If `gh` is already logged in on this m
 | ✅ Zero local deps | uses GitHub's hosted endpoint `https://api.githubcopilot.com/mcp/` |
 | ✅ Reads file bodies | `github_file_read` fixes the official bridge's dropped-content problem |
 
+## Status (2026-09-17)
+
+Still needed. Rechecked on DeepSeek Harness `0.1.5-rc.2` (`@deepseek-ai/dsh-mcp-client` `0.1.5-rc.2`; upstream `master` is `0.1.6-alpha.1`):
+
+- `mcp__github__get_file_contents` still returns `successfully downloaded text file (SHA: …)` plus `[embedded resource unsupported; raw resource data remains available to programmatic callers]`. The file body never reaches the model.
+- `github_file_read` still returns decoded UTF-8 text for the same path.
+
+Official `minimal` inherits these tools (they register globally). A custom preset such as `mini-win` can mask them.
+
 ## Tools
 
 Two tool families are added on install:

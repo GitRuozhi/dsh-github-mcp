@@ -21,6 +21,15 @@ dsh plugin --profile web add github:GitRuozhi/dsh-github-mcp
 | ✅ 零本地依赖 | 使用 GitHub 官方托管端点 `https://api.githubcopilot.com/mcp/` |
 | ✅ 能读文件正文 | `github_file_read` 修复了官方桥接丢弃文件原文的问题 |
 
+## 状态（2026-09-17）
+
+插件仍然有用。在 DeepSeek Harness `0.1.5-rc.2`（`@deepseek-ai/dsh-mcp-client` `0.1.5-rc.2`；上游 `master` 为 `0.1.6-alpha.1`）上复测：
+
+- `mcp__github__get_file_contents` 仍返回 `successfully downloaded text file (SHA: …)` 加上 `[embedded resource unsupported; raw resource data remains available to programmatic callers]`，模型看不到文件正文。
+- 同一路径下 `github_file_read` 仍能返回解码后的 UTF-8 正文。
+
+官方极简预设 `minimal` 会继承这些全局工具；自定义预设（如 `mini-win`）可以屏蔽它们。
+
 ## 工具
 
 安装后新增两类工具：
